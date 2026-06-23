@@ -27,11 +27,18 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
   const [cases, setCases] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [cmd, setCmd] = useState("")
-  const [models, setModels] = useState([
+  const DEFAULT_MODELS = [
     { slot:"AI 1", fungsi:"Narasi & Konten",  provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"gpt-4o",      apiKey:"" },
     { slot:"AI 2", fungsi:"QC Gambar",         provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"gpt-4o-mini", apiKey:"" },
     { slot:"AI 3", fungsi:"Generate Gambar",   provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"dall-e-3",    apiKey:"" },
-  ])
+  ]
+  const [models, setModels] = useState(() => {
+    try {
+      const saved = localStorage.getItem("dc_ai_config")
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return DEFAULT_MODELS
+  })
   const [cfg, setCfg] = useState({ difficulty:"medium", region:"", premis:"" })
   const [generating, setGenerating] = useState(false)
   const [generated, setGenerated] = useState<any>(null)
@@ -39,6 +46,10 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
   const addLog = (level: LogEntry["level"], message: string) => setLogs((p) => [...p, { time: ts(), level, message }])
 
   useEffect(() => { consoleEnd.current?.scrollIntoView({ behavior: "smooth" }) }, [logs])
+
+  useEffect(() => {
+    try { localStorage.setItem("dc_ai_config", JSON.stringify(models)) } catch {}
+  }, [models])
 
   const switchMenu = async (key: MenuKey) => {
     setMenu(key); addLog("info", "Navigating to: " + key)
