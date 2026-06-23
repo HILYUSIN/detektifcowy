@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState, useEffect, useRef } from "react"
-import { getCases, getUsers, blockUser, unblockUser, deleteCase, publishCase } from "./actions"
+import { getCases, getUsers, blockUser, unblockUser, deleteCase, publishCase, saveDraftCase } from "./actions"
 
 type MenuKey = "dashboard" | "cases" | "ai-generator" | "users" | "settings"
 interface LogEntry { time: string; level: "info"|"success"|"warning"|"error"; message: string }
@@ -73,11 +73,23 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
     setUsers(await getUsers())
   }
   const handleGenerate = async () => {
-    setGenerating(true); addLog("info", "Generating case...")
-    await new Promise((r) => setTimeout(r, 2000))
+    setGenerating(true)
+    addLog("info", "Generating case...")
     const title = "Misteri di " + (cfg.region || "Kota Tak Bernama")
-    setGenerated({ title, difficulty: cfg.difficulty, synopsis: cfg.premis || "Kasus misterius menanti.", status: "draft" })
-    setGenerating(false); addLog("success", "Case generated: " + title)
+    const description = cfg.premis || "Kasus misterius menanti penyelidikan lebih lanjut."
+    const result = await saveDraftCase({
+      title,
+      difficulty: cfg.difficulty,
+      region: cfg.region || "Jakarta",
+      description,
+    })
+    setGenerating(false)
+    if (result.error) {
+      addLog("error", "Gagal simpan: " + result.error)
+      return
+    }
+    setGenerated({ id: result.id, title, difficulty: cfg.difficulty, synopsis: description, status: "draft" })
+    addLog("success", "Case tersimpan sebagai draft: " + title)
   }
 
   return (
@@ -234,7 +246,12 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
                 <p className="font-chivo font-bold text-[18px] mb-1" style={{ color:"#f5f5f5" }}>{generated.title}</p>
                 <p className="font-mono text-[11px] mb-4" style={{ color:"#888" }}>{DL[generated.difficulty]} - {generated.synopsis}</p>
                 <div className="flex gap-3">
-                  <button onClick={()=>{addLog("success","Published: "+generated.title);setGenerated(null)}} className="font-mono text-[11px] uppercase px-4 py-2 rounded-lg" style={{ backgroundColor:"rgba(0,184,148,0.15)", border:"1px solid #00b894", color:"#00b894" }}>Publish</button>
+                  <button onClick={async()=>{
+                    await publishCase(generated.id)
+                    addLog("success","Published: "+generated.title)
+                    setCases(await getCases())
+                    setGenerated(null)
+                  }} className="font-mono text-[11px] uppercase px-4 py-2 rounded-lg" style={{ backgroundColor:"rgba(0,184,148,0.15)", border:"1px solid #00b894", color:"#00b894" }}>Publish</button>
                   <button onClick={()=>setGenerated(null)} className="font-mono text-[11px] uppercase px-4 py-2 rounded-lg" style={{ backgroundColor:"transparent", border:"1px solid #2a2a2a", color:"#888" }}>Generate Ulang</button>
                 </div>
               </div>

@@ -50,3 +50,33 @@ export async function publishCase(caseId: string) {
   await supabase.from('cases').update({ status: 'active' }).eq('id', caseId)
   revalidatePath('/admin')
 }
+
+export async function saveDraftCase(data: {
+  title: string
+  difficulty: string
+  region: string
+  description: string
+  content_json?: object
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const { data: inserted, error } = await supabase
+    .from('cases')
+    .insert({
+      title: data.title,
+      difficulty: data.difficulty,
+      region: data.region,
+      description: data.description,
+      content_json: data.content_json ?? null,
+      status: 'draft',
+      created_by: user.id,
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { id: inserted.id }
+}
