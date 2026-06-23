@@ -14,9 +14,10 @@ const DIFFICULTY_STYLES: Record<Difficulty, string> = {
 
 interface CaseCarouselProps {
   cases: Case[]
+  onPlay?: (caseId: string) => void
 }
 
-export default function CaseCarousel({ cases }: CaseCarouselProps) {
+export default function CaseCarousel({ cases, onPlay }: CaseCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   function scroll(dir: "left" | "right") {
@@ -49,7 +50,7 @@ export default function CaseCarousel({ cases }: CaseCarouselProps) {
         className="flex gap-4 overflow-x-auto hide-scrollbar pb-2 scroll-smooth snap-x"
       >
         {cases.map((c, i) => (
-          <CaseCard key={c.id} case_={c} index={i} />
+          <CaseCard key={c.id} case_={c} index={i} onPlay={onPlay} />
         ))}
       </div>
 
@@ -65,12 +66,13 @@ export default function CaseCarousel({ cases }: CaseCarouselProps) {
   )
 }
 
-function CaseCard({ case_: c, index }: { case_: Case; index: number }) {
+function CaseCard({ case_: c, index, onPlay }: { case_: Case; index: number; onPlay?: (id: string) => void }) {
   const rotations = ["-rotate-1", "rotate-1", "-rotate-2", "rotate-0", "rotate-1"]
   const rot = rotations[index % rotations.length]
 
   return (
     <div
+      onClick={() => onPlay?.(c.id)}
       className={cn(
         "flex-shrink-0 w-64 bg-paper-white border border-[#ccc] rounded overflow-hidden snap-start",
         "transition-all duration-300 hover:rotate-0 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(214,48,49,0.25)] cursor-pointer",

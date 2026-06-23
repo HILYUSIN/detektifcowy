@@ -85,22 +85,83 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
   }
   const handleGenerate = async () => {
     setGenerating(true)
-    addLog("info", "Generating case...")
-    const title = "Misteri di " + (cfg.region || "Kota Tak Bernama")
-    const description = cfg.premis || "Kasus misterius menanti penyelidikan lebih lanjut."
-    const result = await saveDraftCase({
-      title,
-      difficulty: cfg.difficulty,
-      region: cfg.region || "Jakarta",
-      description,
-    })
-    setGenerating(false)
-    if (result.error) {
-      addLog("error", "Gagal simpan: " + result.error)
-      return
+    addLog("info", "Memulai pipeline AI...")
+
+    try {
+      const res = await fetch("/api/generate-case", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ models, cfg }),
+      })
+
+      if (!res.ok || !res.body) {
+        addLog("error", "Gagal menghubungi API generate-case")
+        setGenerating(false)
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let caseContent: any = null
+      let thumbnailUrl: string | null = null
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue
+          try {
+            const evt = JSON.parse(line.slice(6))
+            if (evt.type === "log") addLog(evt.level, evt.message)
+            else if (evt.type === "error") { addLog("error", evt.message); setGenerating(false); return }
+            else if (evt.type === "step1") caseContent = evt.caseContent
+            else if (evt.type === "step3") thumbnailUrl = evt.thumbnailUrl
+            else if (evt.type === "complete") {
+              caseContent = evt.caseContent
+              thumbnailUrl = evt.thumbnailUrl
+            }
+          } catch {}
+        }
+      }
+
+      if (!caseContent) {
+        addLog("error", "Pipeline selesai tapi tidak ada data kasus")
+        setGenerating(false)
+        return
+      }
+
+      addLog("info", "Menyimpan draft ke database...")
+      const result = await saveDraftCase({
+        title: caseContent.title || ("Misteri di " + (cfg.region || "Jakarta")),
+        difficulty: cfg.difficulty,
+        region: cfg.region || "Jakarta",
+        description: caseContent.victim?.description || cfg.premis || "Kasus misterius.",
+        content_json: caseContent,
+        thumbnail_url: thumbnailUrl,
+      })
+
+      if (result.error) {
+        addLog("error", "Gagal simpan ke DB: " + result.error)
+      } else {
+        setGenerated({
+          id: result.id,
+          title: caseContent.title,
+          difficulty: cfg.difficulty,
+          synopsis: caseContent.victim?.description || cfg.premis || "",
+          status: "draft",
+        })
+        addLog("success", `Case "${caseContent.title}" tersimpan sebagai draft!`)
+      }
+    } catch (e: any) {
+      addLog("error", "Error: " + (e.message ?? "Unknown"))
+    } finally {
+      setGenerating(false)
     }
-    setGenerated({ id: result.id, title, difficulty: cfg.difficulty, synopsis: description, status: "draft" })
-    addLog("success", "Case tersimpan sebagai draft: " + title)
   }
 
   return (

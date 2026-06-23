@@ -10,9 +10,10 @@ import type { RoomSize } from "@/types"
 interface RoomModalProps {
   onClose: () => void
   userId: string
+  initialCaseId?: string
 }
 
-export default function RoomModal({ onClose, userId }: RoomModalProps) {
+export default function RoomModal({ onClose, userId, initialCaseId }: RoomModalProps) {
   const router = useRouter()
   const [mode, setMode] = useState<"choose" | "create" | "join">("choose")
   const [size, setSize] = useState<RoomSize>(4)
@@ -30,7 +31,7 @@ export default function RoomModal({ onClose, userId }: RoomModalProps) {
 
     const { data: room, error: roomError } = await supabase
       .from("rooms")
-      .insert({ room_code: code, size, host_id: userId, status: "waiting" })
+      .insert({ room_code: code, size, host_id: userId, status: "waiting", case_id: initialCaseId ?? null })
       .select()
       .single()
 

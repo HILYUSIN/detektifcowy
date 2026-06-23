@@ -1,11 +1,12 @@
-﻿"use client"
+"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, TrendingUp } from "lucide-react"
 import DashboardNavbar from "@/components/dashboard/Navbar"
 import CaseCarousel from "@/components/dashboard/CaseCarousel"
 import Leaderboard from "@/components/dashboard/Leaderboard"
 import RoomModal from "@/components/dashboard/RoomModal"
+import { createClient } from "@/lib/supabase/client"
 import { type UserProfile, type Case, type Rank } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -25,11 +26,56 @@ interface DashboardClientProps {
 
 export default function DashboardClient({
   profile,
-  cases,
-  leaderboard,
+  cases: initialCases,
+  leaderboard: initialLeaderboard,
   currentUserId,
 }: DashboardClientProps) {
+  const [cases, setCases] = useState<Case[]>(initialCases)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(initialLeaderboard)
+  const [selectedCaseId, setSelectedCaseId] = useState<string | undefined>(undefined)
   const [showRoomModal, setShowRoomModal] = useState(false)
+
+  function openRoomModal(caseId?: string) {
+    setSelectedCaseId(caseId)
+    setShowRoomModal(true)
+  }
+
+  // ── Realtime subscriptions ────────────────────────────────────────────────
+  useEffect(() => {
+    const supabase = createClient()
+
+    // Subscribe cases — refresh list on any INSERT/UPDATE/DELETE
+    const casesSub = supabase
+      .channel("rt-cases")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cases" }, async () => {
+        const { data } = await supabase
+          .from("cases")
+          .select("*")
+          .eq("status", "active")
+          .order("play_count", { ascending: false })
+          .limit(10)
+        if (data) setCases(data as Case[])
+      })
+      .subscribe()
+
+    // Subscribe profiles — refresh leaderboard on XP/rank changes
+    const lbSub = supabase
+      .channel("rt-leaderboard")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" }, async () => {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, username, rank, total_xp")
+          .order("total_xp", { ascending: false })
+          .limit(10)
+        if (data) setLeaderboard(data as LeaderboardEntry[])
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(casesSub)
+      supabase.removeChannel(lbSub)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,7 +113,7 @@ export default function DashboardClient({
             </p>
 
             <button
-              onClick={() => setShowRoomModal(true)}
+              onClick={() => openRoomModal()}
               className={cn(
                 "inline-flex items-center gap-3 px-10 py-4 rounded-xl",
                 "font-franklin font-bold text-[16px] text-white uppercase tracking-wider",
@@ -95,7 +141,7 @@ export default function DashboardClient({
               </p>
             </div>
           </div>
-          <CaseCarousel cases={cases} />
+          <CaseCarousel cases={cases} onPlay={(caseId) => openRoomModal(caseId)} />
         </section>
 
         {/* LEADERBOARD */}
@@ -124,8 +170,9 @@ export default function DashboardClient({
       {/* Room Modal */}
       {showRoomModal && (
         <RoomModal
-          onClose={() => setShowRoomModal(false)}
+          onClose={() => { setShowRoomModal(false); setSelectedCaseId(undefined) }}
           userId={currentUserId}
+          initialCaseId={selectedCaseId}
         />
       )}
     </div>

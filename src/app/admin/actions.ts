@@ -57,6 +57,7 @@ export async function saveDraftCase(data: {
   region: string
   description: string
   content_json?: object
+  thumbnail_url?: string | null
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -70,6 +71,7 @@ export async function saveDraftCase(data: {
       region: data.region,
       description: data.description,
       content_json: data.content_json ?? null,
+      thumbnail_url: data.thumbnail_url ?? null,
       status: 'draft',
       created_by: user.id,
     })
