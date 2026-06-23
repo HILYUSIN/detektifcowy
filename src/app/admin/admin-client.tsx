@@ -27,12 +27,10 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
   const [cases, setCases] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [cmd, setCmd] = useState("")
-  const [provider, setProvider] = useState("OpenAI")
-  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1")
   const [models, setModels] = useState([
-    { slot:"AI 1", fungsi:"Narasi & Konten", model:"gpt-4o", apiKey:"" },
-    { slot:"AI 2", fungsi:"QC Prompt Gambar", model:"gpt-4o-mini", apiKey:"" },
-    { slot:"AI 3", fungsi:"Generate Gambar", model:"dall-e-3", apiKey:"" },
+    { slot:"AI 1", fungsi:"Narasi & Konten",  provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"gpt-4o",      apiKey:"" },
+    { slot:"AI 2", fungsi:"QC Gambar",         provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"gpt-4o-mini", apiKey:"" },
+    { slot:"AI 3", fungsi:"Generate Gambar",   provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"dall-e-3",    apiKey:"" },
   ])
   const [cfg, setCfg] = useState({ difficulty:"medium", region:"", premis:"" })
   const [generating, setGenerating] = useState(false)
@@ -151,30 +149,69 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
         {menu === "ai-generator" && (
           <div className="flex flex-col gap-6">
             <h2 className="font-chivo font-black text-[22px] uppercase" style={{ color:"#f5f5f5" }}>AI Generator</h2>
-            <div className="rounded-xl p-6 flex gap-4" style={{ backgroundColor:"#1a1a1a", border:"1px solid #2a2a2a" }}>
-              <div className="flex flex-col gap-1 flex-1">
-                <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Provider</label>
-                <select value={provider} onChange={(e)=>setProvider(e.target.value)} className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none" style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }}><option>OpenAI</option><option>Anthropic</option><option>Custom</option></select>
+
+            {/* Per-slot AI config cards */}
+            {models.map((row, idx) => (
+              <div key={idx} className="rounded-xl overflow-hidden" style={{ border:"1px solid #2a2a2a" }}>
+                {/* Card header */}
+                <div className="px-5 py-3 flex items-center gap-3" style={{ backgroundColor:"#1a1a1a", borderBottom:"1px solid #2a2a2a" }}>
+                  <span className="font-chivo font-black text-[13px] uppercase px-2 py-0.5 rounded" style={{ backgroundColor:"rgba(214,48,49,0.15)", color:"#d63031", border:"1px solid rgba(214,48,49,0.3)" }}>{row.slot}</span>
+                  <span className="font-chivo font-bold text-[14px] uppercase" style={{ color:"#f5f5f5" }}>{row.fungsi}</span>
+                </div>
+                {/* Fields grid */}
+                <div className="p-5 grid grid-cols-2 gap-4" style={{ backgroundColor:"#161616" }}>
+                  {/* Provider */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Provider</label>
+                    <select
+                      value={row.provider}
+                      onChange={(e)=>{const u=[...models];u[idx]={...u[idx],provider:e.target.value};setModels(u)}}
+                      className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none"
+                      style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }}
+                    >
+                      <option>OpenAI</option>
+                      <option>Anthropic</option>
+                      <option>Google</option>
+                      <option>Custom</option>
+                    </select>
+                  </div>
+                  {/* Base URL */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Base URL</label>
+                    <input
+                      value={row.baseUrl}
+                      onChange={(e)=>{const u=[...models];u[idx]={...u[idx],baseUrl:e.target.value};setModels(u)}}
+                      placeholder="https://api.openai.com/v1"
+                      className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none"
+                      style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }}
+                    />
+                  </div>
+                  {/* Model */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Model</label>
+                    <input
+                      value={row.model}
+                      onChange={(e)=>{const u=[...models];u[idx]={...u[idx],model:e.target.value};setModels(u)}}
+                      placeholder="gpt-4o"
+                      className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none"
+                      style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }}
+                    />
+                  </div>
+                  {/* API Key */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>API Key</label>
+                    <input
+                      type="password"
+                      value={row.apiKey}
+                      onChange={(e)=>{const u=[...models];u[idx]={...u[idx],apiKey:e.target.value};setModels(u)}}
+                      placeholder="sk-..."
+                      className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none"
+                      style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col gap-1 flex-1">
-                <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Base URL</label>
-                <input value={baseUrl} onChange={(e)=>setBaseUrl(e.target.value)} className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none" style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }} />
-              </div>
-            </div>
-            <div className="rounded-xl overflow-hidden" style={{ border:"1px solid #2a2a2a" }}>
-              <div className="px-5 py-3 font-chivo font-bold text-[14px] uppercase" style={{ backgroundColor:"#1a1a1a", borderBottom:"1px solid #2a2a2a", color:"#f5f5f5" }}>Model Slots</div>
-              <table className="w-full">
-                <thead><tr style={{ backgroundColor:"#151515", borderBottom:"1px solid #2a2a2a" }}>{["Slot","Fungsi","Model","API Key"].map((h)=><th key={h} className="font-mono text-[10px] uppercase tracking-wider text-left px-4 py-2" style={{ color:"#888" }}>{h}</th>)}</tr></thead>
-                <tbody>{models.map((row,idx)=>(
-                  <tr key={idx} style={{ borderBottom:"1px solid #1a1a1a" }}>
-                    <td className="px-4 py-3"><span className="font-chivo font-bold text-[12px]" style={{ color:"#d63031" }}>{row.slot}</span></td>
-                    <td className="px-4 py-3 font-franklin text-[12px]" style={{ color:"#888" }}>{row.fungsi}</td>
-                    <td className="px-4 py-3"><input value={row.model} onChange={(e)=>{const u=[...models];u[idx]={...u[idx],model:e.target.value};setModels(u)}} className="rounded px-2 py-1 font-mono text-[11px] outline-none w-36" style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }} /></td>
-                    <td className="px-4 py-3"><input type="password" value={row.apiKey} onChange={(e)=>{const u=[...models];u[idx]={...u[idx],apiKey:e.target.value};setModels(u)}} placeholder="sk-..." className="rounded px-2 py-1 font-mono text-[11px] outline-none w-48" style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }} /></td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
+            ))}
             <div className="rounded-xl p-6 flex flex-col gap-4" style={{ backgroundColor:"#1a1a1a", border:"1px solid #2a2a2a" }}>
               <div className="font-chivo font-bold text-[14px] uppercase" style={{ color:"#f5f5f5" }}>Case Config</div>
               <div className="flex gap-3">{["easy","medium","hard","leader"].map((d)=>(<button key={d} onClick={()=>setCfg((p)=>({...p,difficulty:d}))} className="px-4 py-2 rounded-lg font-mono text-[11px] uppercase tracking-wider" style={{ border:"1px solid "+(cfg.difficulty===d?DC[d]:"#2a2a2a"), color:cfg.difficulty===d?DC[d]:"#888", backgroundColor:cfg.difficulty===d?DC[d]+"15":"transparent" }}>{DL[d]}</button>))}</div>
