@@ -75,7 +75,13 @@ function narrativePrompt(cfg: { difficulty: string; region: string; premis: stri
       "interrogation": "dialog interogasi panjang dan detail (4-6 pertanyaan & jawaban)",
       "skck": "catatan riwayat kriminal",
       "alibi": "alibi tersangka",
-      "other_docs": []
+      "other_docs": [
+        {
+          "title": "judul dokumen",
+          "content": "isi dokumen",
+          "required_ability": null
+        }
+      ]
     }
   ],
   "witnesses": [
@@ -100,11 +106,62 @@ function narrativePrompt(cfg: { difficulty: string; region: string; premis: stri
   "maps": {
     "city_map_url": null,
     "scene_map_url": null,
-    "scene_photos": [],
+    "scene_photos": [
+      { "url": null, "caption": "caption foto TKP" }
+    ],
     "location_markers": [
       { "label": "TKP Utama", "description": "deskripsi", "x": 0.5, "y": 0.4 }
     ]
   },
+  "digital_findings": {
+    "whatsapp_chats": [
+      {
+        "id": "DW1",
+        "sender": "nama pengirim",
+        "content": "isi pesan WhatsApp",
+        "timestamp": "2024-01-15T10:30:00Z",
+        "is_deleted": false
+      }
+    ],
+    "emails": [
+      {
+        "id": "DE1",
+        "from": "pengirim@email.com",
+        "to": "penerima@email.com",
+        "subject": "subjek email",
+        "body": "isi email lengkap",
+        "timestamp": "2024-01-14T08:00:00Z",
+        "attachments": []
+      }
+    ],
+    "call_logs": [
+      {
+        "id": "DC1",
+        "contact": "nama kontak",
+        "number": "08123456789",
+        "type": "incoming",
+        "duration": 120,
+        "timestamp": "2024-01-15T09:00:00Z"
+      }
+    ]
+  },
+  "forensic_docs": [
+    {
+      "title": "Judul Dokumen Forensik",
+      "content": "Isi dokumen forensik lengkap",
+      "required_ability": "forensik"
+    }
+  ],
+  "news_articles": [
+    {
+      "id": "N1",
+      "publication": "Nama Media",
+      "journalist": "Nama Jurnalis",
+      "headline": "Judul Berita",
+      "body": "Isi berita lengkap 2-3 paragraf",
+      "published_at": "2024-01-16T07:00:00Z"
+    }
+  ],
   "culprit_id": "S1",
   "solution_narrative": "penjelasan lengkap bagaimana pelaku melakukan kejahatan, motif, dan cara mengungkapnya (3-4 paragraf)"
 }
@@ -118,6 +175,12 @@ Wajib:
 - 3-4 suspects (culprit_id HARUS salah satu dari id suspects)
 - 2-3 witnesses
 - 5-8 clues (campuran physical, digital, testimonial, document)
+- Beberapa clues harus memiliki required_ability (forensik, hacker, profiler, interogator, kriminolog, ahli_lapangan, jurnalis, pengacara) agar hanya pemain dengan ability tersebut yang bisa melihatnya
+- 3-5 WhatsApp chats antara korban dan tersangka/saksi
+- 2-3 emails yang relevan dengan kasus
+- 3-5 call logs
+- 2-3 dokumen forensik (dengan required_ability sesuai kemampuan)
+- 1-2 berita media tentang kasus
 - Semua teks dalam Bahasa Indonesia
 - Kembalikan HANYA JSON valid`
 }

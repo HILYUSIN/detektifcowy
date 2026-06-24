@@ -5,10 +5,13 @@ export async function POST(req: NextRequest) {
 
   const isCorrect = suspectId === culpritId
 
+  const message = isCorrect
+    ? 'Tuduhan Anda benar! Pelaku telah tertangkap. Kasus selesai.'
+    : 'Tuduhan Anda salah. Pelaku masih bebas. Coba lagi dengan bukti yang lebih kuat.'
+
   return NextResponse.json({
     isCorrect,
-    message: isCorrect
-      ? 'Tuduhan Anda benar! Pelaku telah tertangkap.'
-      : 'Tuduhan Anda salah. Pelaku masih bebas.',
+    message,
+    penalty: isCorrect ? 0 : -200,
   })
 }

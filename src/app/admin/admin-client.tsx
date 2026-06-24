@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { getCases, getUsers, blockUser, unblockUser, deleteCase, publishCase, saveDraftCase } from "./actions"
+import { saveAiConfig, loadAiConfig } from "@/app/room/[code]/actions"
 
 type MenuKey = "dashboard" | "cases" | "ai-generator" | "users" | "settings"
 interface LogEntry { time: string; level: "info"|"success"|"warning"|"error"; message: string }
@@ -32,13 +33,25 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
     { slot:"AI 2", fungsi:"QC Gambar",         provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"gpt-4o-mini", apiKey:"" },
     { slot:"AI 3", fungsi:"Generate Gambar",   provider:"OpenAI", baseUrl:"https://api.openai.com/v1",        model:"dall-e-3",    apiKey:"" },
   ]
-  const [models, setModels] = useState(() => {
-    try {
-      const saved = localStorage.getItem("dc_ai_config")
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return DEFAULT_MODELS
-  })
+  const [models, setModels] = useState(DEFAULT_MODELS)
+  const [configLoaded, setConfigLoaded] = useState(false)
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const dbConfig = await loadAiConfig()
+        if (dbConfig && Array.isArray(dbConfig)) {
+          setModels(dbConfig)
+          addLog("success", "AI config loaded from database.")
+        } else {
+          const saved = localStorage.getItem("dc_ai_config")
+          if (saved) setModels(JSON.parse(saved))
+        }
+      } catch {}
+      setConfigLoaded(true)
+    }
+    loadConfig()
+  }, [])
   const [cfg, setCfg] = useState({ difficulty:"medium", region:"", premis:"" })
   const [generating, setGenerating] = useState(false)
   const [generated, setGenerated] = useState<any>(null)
@@ -48,8 +61,15 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
   useEffect(() => { consoleEnd.current?.scrollIntoView({ behavior: "smooth" }) }, [logs])
 
   useEffect(() => {
+    if (!configLoaded) return
     try { localStorage.setItem("dc_ai_config", JSON.stringify(models)) } catch {}
-  }, [models])
+  }, [models, configLoaded])
+
+  const handleSaveConfig = async () => {
+    const result = await saveAiConfig(models)
+    if (result.error) addLog("error", "Failed to save config: " + result.error)
+    else addLog("success", "AI config saved to database!")
+  }
 
   const switchMenu = async (key: MenuKey) => {
     setMenu(key); addLog("info", "Navigating to: " + key)
@@ -307,10 +327,15 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
                 <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Premis (opsional)</label>
                 <textarea value={cfg.premis} onChange={(e)=>setCfg((p)=>({...p,premis:e.target.value}))} rows={3} placeholder="Kosongkan untuk AI tentukan sendiri..." className="rounded-lg px-3 py-2 font-franklin text-[13px] outline-none resize-none" style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }} />
               </div>
-              <button onClick={handleGenerate} disabled={generating} className="self-start font-chivo font-bold text-[13px] uppercase tracking-wider text-white px-8 py-3 rounded-xl flex items-center gap-2" style={{ background:"linear-gradient(to right, #d63031, #0d0d0d)", opacity:generating?0.6:1 }}>
-                {generating && <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin inline-block" style={{ borderColor:"rgba(255,255,255,0.3)", borderTopColor:"white" }} />}
-                {generating ? "GENERATING..." : "GENERATE CASE"}
-              </button>
+              <div className="flex gap-3">
+                <button onClick={handleSaveConfig} className="font-chivo font-bold text-[12px] uppercase tracking-wider px-6 py-3 rounded-xl border" style={{ borderColor:"#2a2a2a", color:"#888", backgroundColor:"transparent" }}>
+                  SAVE CONFIG
+                </button>
+                <button onClick={handleGenerate} disabled={generating} className="font-chivo font-bold text-[13px] uppercase tracking-wider text-white px-8 py-3 rounded-xl flex items-center gap-2" style={{ background:"linear-gradient(to right, #d63031, #0d0d0d)", opacity:generating?0.6:1 }}>
+                  {generating && <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin inline-block" style={{ borderColor:"rgba(255,255,255,0.3)", borderTopColor:"white" }} />}
+                  {generating ? "GENERATING..." : "GENERATE CASE"}
+                </button>
+              </div>
             </div>
             {generated && (
               <div className="rounded-xl p-6" style={{ backgroundColor:"#201f1f", border:"1px solid rgba(249,202,36,0.3)" }}>

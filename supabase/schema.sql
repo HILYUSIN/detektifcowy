@@ -266,6 +266,30 @@ CREATE TABLE public.board_connections (
 );
 
 -- ============================================================
+-- AI GENERATOR CONFIG
+-- ============================================================
+
+CREATE TABLE public.ai_generator_config (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  config      JSONB NOT NULL DEFAULT '{}',
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- ============================================================
+-- ROOM CHAT
+-- ============================================================
+
+CREATE TABLE public.room_chat (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_id     UUID NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
 -- UNBLOCK REQUESTS
 -- ============================================================
 
@@ -402,6 +426,22 @@ CREATE POLICY "Admins can update unblock requests"
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
+-- AI GENERATOR CONFIG
+ALTER TABLE public.ai_generator_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own AI config"
+  ON public.ai_generator_config FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own AI config"
+  ON public.ai_generator_config FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own AI config"
+  ON public.ai_generator_config FOR UPDATE USING (auth.uid() = user_id);
+
+-- ROOM CHAT
+ALTER TABLE public.room_chat ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Room players can view chat"
+  ON public.room_chat FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Room players can send chat"
+  ON public.room_chat FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 -- ============================================================
 -- REALTIME SUBSCRIPTIONS
 -- ============================================================
@@ -412,6 +452,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.board_nodes;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.board_connections;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.accusations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.game_results;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.room_chat;
 
 -- ============================================================
 -- INDEXES
@@ -427,3 +468,5 @@ CREATE INDEX idx_room_players_room ON public.room_players(room_id);
 CREATE INDEX idx_board_nodes_room ON public.board_nodes(room_id);
 CREATE INDEX idx_board_connections_room ON public.board_connections(room_id);
 CREATE INDEX idx_notebook_room_user ON public.notebook_entries(room_id, user_id);
+CREATE INDEX idx_room_chat_room ON public.room_chat(room_id);
+CREATE INDEX idx_ai_config_user ON public.ai_generator_config(user_id);
