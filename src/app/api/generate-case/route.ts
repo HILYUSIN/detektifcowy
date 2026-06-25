@@ -32,7 +32,6 @@ async function callChat(
   }
 
   // OpenAI-compatible (including Azure, Together, Groq, custom, etc.)
-  // Only add response_format when explicitly needed (AI 1 narrative) AND provider supports it
   const supportsJsonMode = ai.provider !== 'Google' && forceJsonMode
   const body: any = {
     model: ai.model,
@@ -53,8 +52,17 @@ async function callChat(
     },
     body: JSON.stringify(body),
   })
+
+  // Check content-type before parsing — if server returns HTML it means wrong URL or auth error
+  const contentType = res.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json') && !contentType.includes('text/plain')) {
+    const text = await res.text()
+    throw new Error(`Provider mengembalikan non-JSON (HTTP ${res.status}). Cek Base URL dan API Key. Preview: ${text.substring(0, 150)}`)
+  }
+
   const d = await res.json()
   if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error))
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${JSON.stringify(d)}`)
   return d.choices?.[0]?.message?.content ?? ''
 }
 
@@ -76,8 +84,15 @@ async function callImageGen(ai: ModelCfg, prompt: string): Promise<string> {
     body: JSON.stringify({ model: ai.model, prompt, n: 1, size: '1024x1024' }),
   })
 
+  const contentType = res.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json')) {
+    const text = await res.text()
+    throw new Error(`Provider mengembalikan non-JSON (HTTP ${res.status}). Cek Base URL AI 3. Preview: ${text.substring(0, 150)}`)
+  }
+
   const d = await res.json()
   if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error))
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${JSON.stringify(d)}`)
   return d.data?.[0]?.url ?? d.data?.[0]?.b64_json ?? ''
 }
 
