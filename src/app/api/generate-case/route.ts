@@ -49,6 +49,9 @@ async function callChat(
     headers: {
       Authorization: `Bearer ${ai.apiKey}`,
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (compatible; DetektifCowy/1.0)',
+      'X-Requested-With': 'XMLHttpRequest',
     },
     body: JSON.stringify(body),
   })
