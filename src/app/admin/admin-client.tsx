@@ -287,17 +287,18 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
                   {/* Provider */}
                   <div className="flex flex-col gap-1.5">
                     <label className="font-mono text-[10px] uppercase tracking-wider" style={{ color:"#888" }}>Provider</label>
-                    <select
+                    <input
                       value={row.provider}
                       onChange={(e)=>{const u=[...models];u[idx]={...u[idx],provider:e.target.value};setModels(u)}}
+                      placeholder="OpenAI / Anthropic / Custom"
                       className="rounded-lg px-3 py-2 font-mono text-[12px] outline-none"
                       style={{ backgroundColor:"#201f1f", border:"1px solid #2a2a2a", color:"#f5f5f5" }}
-                    >
-                      <option>OpenAI</option>
-                      <option>Anthropic</option>
-                      <option>Google</option>
-                      <option>Custom</option>
-                    </select>
+                    />
+                    <span className="font-mono text-[9px]" style={{ color:"#555" }}>
+                      {idx === 0 ? "Narasi (OpenAI-compatible atau Anthropic)" :
+                       idx === 1 ? "QC Prompt (OpenAI-compatible atau Anthropic)" :
+                       "Image gen (OpenAI-compatible /images/generations)"}
+                    </span>
                   </div>
                   {/* Base URL */}
                   <div className="flex flex-col gap-1.5">

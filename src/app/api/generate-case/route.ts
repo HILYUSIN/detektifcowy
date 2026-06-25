@@ -59,11 +59,23 @@ async function callChat(
 }
 
 async function callImageGen(ai: ModelCfg, prompt: string): Promise<string> {
+  // Try OpenAI images/generations endpoint first (DALL-E, Azure, etc.)
+  // If provider is Anthropic or text-only, fall back to returning empty
+  if (ai.provider === 'Anthropic') {
+    // Anthropic has no image gen - skip
+    throw new Error('Anthropic tidak mendukung generate gambar. Gunakan provider lain untuk AI 3.')
+  }
+
+  // Standard OpenAI-compatible image generation
   const res = await fetch(`${ai.baseUrl}/images/generations`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${ai.apiKey}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ model: ai.model, prompt, n: 1, size: '1024x1024' }),
   })
+
   const d = await res.json()
   if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error))
   return d.data?.[0]?.url ?? d.data?.[0]?.b64_json ?? ''
