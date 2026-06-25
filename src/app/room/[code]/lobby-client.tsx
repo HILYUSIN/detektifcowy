@@ -74,7 +74,8 @@ export default function RoomLobbyClient({ room, currentUserId, isHost, initialPl
     if (idx >= myIndex) return true
     return (player.abilities?.length ?? 0) === getRequiredCount(room.size as RoomSize, idx)
   })
-  const isMyTurn = previousPlayersReady && myIndex >= 0
+  // Once abilities are saved, lock the selection
+  const isMyTurn = previousPlayersReady && myIndex >= 0 && !saveSuccess
 
   useEffect(() => {
     const myPlayer = players.find((p) => p.user_id === currentUserId)
@@ -221,9 +222,20 @@ export default function RoomLobbyClient({ room, currentUserId, isHost, initialPl
     setChatLoading(false)
   }
 
-  const handleToggleVoice = () => {
-    setIsMuted(!isMuted)
-    setVoiceConnected(!voiceConnected)
+  const handleToggleVoice = async () => {
+    if (!voiceConnected) {
+      // Request microphone access
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        stream.getAudioTracks().forEach((t) => { t.enabled = false }) // start muted
+        setVoiceConnected(true)
+        setIsMuted(true)
+      } catch {
+        setError("Tidak dapat mengakses mikrofon.")
+      }
+    } else {
+      setIsMuted((m) => !m)
+    }
   }
 
   const readyCount = sortedPlayers.filter((p, idx) =>

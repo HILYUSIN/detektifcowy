@@ -7,7 +7,7 @@ import type { Suspect } from '@/types'
 interface AccusationModalProps {
   suspects: Suspect[]
   culpritId: string
-  onResult: (isCorrect: boolean) => void
+  onResult: (isCorrect: boolean, accusedSuspectId: string) => void
   onClose: () => void
 }
 
@@ -32,7 +32,7 @@ export default function AccusationModal({ suspects, culpritId, onResult, onClose
       setResultMessage(data.message)
       // Notify parent after brief delay
       setTimeout(() => {
-        onResult(data.isCorrect)
+        onResult(data.isCorrect, selectedId)
       }, 2200)
     } catch {
       setResultMessage('Terjadi kesalahan. Coba lagi.')

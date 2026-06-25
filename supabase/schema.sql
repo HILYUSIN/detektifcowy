@@ -375,6 +375,10 @@ CREATE POLICY "Users can update own player record"
 -- GAME RESULTS
 CREATE POLICY "Game results viewable by authenticated users"
   ON public.game_results FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Players can insert game results"
+  ON public.game_results FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Players can update game results"
+  ON public.game_results FOR UPDATE USING (auth.uid() IS NOT NULL);
 
 -- ACCUSATIONS
 CREATE POLICY "Accusations viewable by room players"
