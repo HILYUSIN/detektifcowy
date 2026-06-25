@@ -4,7 +4,13 @@ export const maxDuration = 120
 
 interface ModelCfg { provider: string; baseUrl: string; apiKey: string; model: string }
 
-async function callChat(ai: ModelCfg, systemPrompt: string, userPrompt: string): Promise<string> {
+async function callChat(
+  ai: ModelCfg,
+  systemPrompt: string,
+  userPrompt: string,
+  forceJsonMode = false
+): Promise<string> {
+  // Anthropic API format
   if (ai.provider === 'Anthropic') {
     const res = await fetch(`${ai.baseUrl}/messages`, {
       method: 'POST',
@@ -13,21 +19,39 @@ async function callChat(ai: ModelCfg, systemPrompt: string, userPrompt: string):
         'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model: ai.model, max_tokens: 8192, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+      body: JSON.stringify({
+        model: ai.model,
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
     })
     const d = await res.json()
     if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error))
     return d.content?.[0]?.text ?? ''
   }
-  // OpenAI-compatible
+
+  // OpenAI-compatible (including Azure, Together, Groq, custom, etc.)
+  // Only add response_format when explicitly needed (AI 1 narrative) AND provider supports it
+  const supportsJsonMode = ai.provider !== 'Google' && forceJsonMode
+  const body: any = {
+    model: ai.model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+  }
+  if (supportsJsonMode) {
+    body.response_format = { type: 'json_object' }
+  }
+
   const res = await fetch(`${ai.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${ai.apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: ai.model,
-      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-      response_format: ai.provider === 'Google' ? undefined : { type: 'json_object' },
-    }),
+    headers: {
+      Authorization: `Bearer ${ai.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
   })
   const d = await res.json()
   if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error))
@@ -220,7 +244,8 @@ export async function POST(req: NextRequest) {
         // ── STEP 1: Narrative ──────────────────────────────────────────────
         emit({ type: 'log', level: 'info', message: '[AI 1] Membuat narasi kasus...' })
         const ai1: ModelCfg = models[0]
-        const raw1 = await callChat(ai1, narrativeSystem(), narrativePrompt(cfg))
+        // AI 1 needs JSON mode — pass forceJsonMode=true only for OpenAI-compatible providers
+        const raw1 = await callChat(ai1, narrativeSystem(), narrativePrompt(cfg), true)
 
         let caseContent: any
         try {
@@ -238,10 +263,12 @@ export async function POST(req: NextRequest) {
         const ai2: ModelCfg = models[1]
         let imagePrompt = ''
         try {
+          // AI 2 is QC prompt - plain text output, NO json mode
           imagePrompt = await callChat(
             ai2,
             qcSystem(),
-            qcPrompt(caseContent.title, cfg.region || 'Jakarta', caseContent.victim?.description || '')
+            qcPrompt(caseContent.title, cfg.region || 'Jakarta', caseContent.victim?.description || ''),
+            false
           )
           imagePrompt = imagePrompt.trim()
           emit({ type: 'log', level: 'success', message: `[AI 2] Prompt siap: "${imagePrompt.substring(0, 60)}..."` })

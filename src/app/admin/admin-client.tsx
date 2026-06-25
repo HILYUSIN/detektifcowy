@@ -176,6 +176,26 @@ export default function AdminClient({ profile, totalCases, totalUsers }: Props) 
           status: "draft",
         })
         addLog("success", `Case "${caseContent.title}" tersimpan sebagai draft!`)
+        // Play notification sound
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.type = 'sine'
+          gain.gain.setValueAtTime(0.3, ctx.currentTime)
+          // Ascending chime: C - E - G
+          const notes = [523.25, 659.25, 783.99]
+          notes.forEach((freq, i) => {
+            const t = ctx.currentTime + i * 0.18
+            osc.frequency.setValueAtTime(freq, t)
+            gain.gain.setValueAtTime(0.3, t)
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35)
+          })
+          osc.start(ctx.currentTime)
+          osc.stop(ctx.currentTime + notes.length * 0.18 + 0.35)
+        } catch {}
       }
     } catch (e: any) {
       addLog("error", "Error: " + (e.message ?? "Unknown"))
